@@ -1,0 +1,81 @@
+---
+title: "otchet_part_1"
+author: "anna kvach"
+date: "12/16/2020"
+output: 
+  html_document:
+    toc: true 
+    toc_depth: 4  
+    theme: united  
+    highlight: tango  
+---
+
+# Obtain data
+
+There are two options how to obtain data: with help of Sratoolkit and simle bash code or manually from EBLM-EBI. 
+
+## Sratoolkit + simple bash 
+
+Using this method, we created a simple bash program that receives a file with sra identifiers as input. Our code uses the prefetch and fastq-dump programs from the Sratoolkit package, and as a result downloads forward and backward reads.
+
+
+First of all we created a .txt file with all sra id on each line.
+
+```{bash, eval=F, echo=T}
+SRR11096622
+SRR11096623
+SRR11096624
+SRR11096625
+SRR11096626
+SRR11096627
+SRR11096628
+SRR11096629
+SRR11096630
+SRR11096631
+SRR11096632
+SRR11096633
+SRR11096634
+SRR11096635
+SRR11096636
+SRR11096637
+SRR11096638
+SRR11096639
+SRR11096640
+```
+
+
+
+After that sra_dowload_with_sratoolkit.sh was create.  
+
+```{bash, sra_dowload_with_sratoolkit, eval=F, echo=T}
+#!/bin/bash  
+# for SRA files downloading with help of sratoolkit                                           
+FILE=$1                            
+while read id                      
+do                                 
+prefetch $id                       
+echo "for $id prefetch done"       
+fastq-dump --split-files --split-3 ${id}.sra
+echo "for $id fastq-dump done"     
+done < $FILE
+```
+
+And after that:
+
+```{bash, eval=F, echo=T}
+sra_dowload_with_sratoolkit.sh sra_id.txt
+
+```
+
+
+## Directly and manually from EBLM-EBI
+
+Also data can be obtained directly and manually from EBLM-EBI - <https://www.ebi.ac.uk/ena/browser/view/PRJNA607082>. 
+
+You should dowload forward and revers reads. Files with forward reads have "_1" prefix (for ex. SRR11096622_1.fastq.gz) and files with reverse reads have "_2" prefix (for ex. SRR11096622_2.fastq.gz). Files with no prefix are files of the remaining unpaired reads, and we will not use them.
+
+# References
+
+Sratoolkit - <http://ncbi.github.io/sra-tools/ >
+
+

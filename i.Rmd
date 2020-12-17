@@ -66,17 +66,17 @@ done < $FILE
 And after that:
 
 ```{bash, eval=F, echo=T}
-sra_dowload_with_sratoolkit.sh sra_id.txt
+/path_to/sra_dowload_with_sratoolkit.sh sra_id.txt
 ```
 
 In result you got for all samples SRRXXXXXXXX_1.fastq.gz (forward reads) and (revers reads) SRRXXXXXXXX_2.fastq.gz, and for some samples - SRRXXXXXXXX.fastq.gz - files without prefix. Files with no prefix are files of the remaining unpaired reads, and we did not use them.
 
 ```{bash, eval=F, echo=T}
-mkdir forward_and_revers_raw_reads # create dir for forward and revers raw reads
-mkdir bad_single_reads # create dir for unpaired reads
+mkdir /path_to/forward_and_revers_raw_reads # create dir for forward and revers raw reads
+mkdir /path_to/bad_single_reads # create dir for unpaired reads
 
-mv *_*.*  forward_and_revers_raw_reads # dir for forward and revers raw reads - data for future analisis
-mv *.f* bad_single_reads # dir for remaining unpaired reads - did not use them
+mv *_*.*  /path_to/forward_and_revers_raw_reads # dir for forward and revers raw reads - data for future analisis
+mv *.f* /path_to/bad_single_reads # dir for remaining unpaired reads - did not use them
 ```
 
 
@@ -84,21 +84,33 @@ mv *.f* bad_single_reads # dir for remaining unpaired reads - did not use them
 
 Also data could be obtained directly and manually from EBLM-EBI - <https://www.ebi.ac.uk/ena/browser/view/PRJNA607082>. 
 
-You should dowload forward and revers reads. Files with forward reads have "_1" prefix (for ex. SRR11096622_1.fastq.gz) and files with reverse reads have "_2" prefix (for ex. SRR11096622_2.fastq.gz). Files with no prefix are files of the remaining unpaired reads, and we did not need them.
+Files with forward reads have "_1" prefix (for ex. SRR11096622_1.fastq.gz) and files with reverse reads have "_2" prefix (for ex. SRR11096622_2.fastq.gz). Files with no prefix are files of the remaining unpaired reads, and we did not need them.
 
 # First data quality assessment FastQC and MultiQC
 
-## FastQC
+## FastQC_1
 
 ```{bash, eval=F, echo=T}
-cd forward_and_revers_raw_reads # start to work with good paired reads
 
-gunzip *fastq.gz # to unarchive all data  
-mkdir FastQC_1_for_raw_data # create new dir for fastqc reports
-fastqc -o * # create fastqc reports
+# start to work with good paired reads
+cd forward_and_revers_raw_reads 
+
+# to unarchive all data  
+gunzip *fastq.gz 
+
+# create new dir for fastqc reports
+mkdir /path_to/FastQC_1_for_raw_data 
+
+# create fastqc reports in FastQC_1_for_raw_data
+fastqc -o /path_to/FastQC_1_for_raw_data * 
 ```
 
-## MultiQC
+## MultiQC_1
+
+```{bash, eval=F, echo=T}
+# to summarising the output from numerous fastqc reports in one .html file
+multiqc /path_to/FastQC_1_for_raw_data
+```
 
 Quality reports show problems with:
 
@@ -106,7 +118,7 @@ Quality reports show problems with:
 
 * 
 
-# Trim Galore + FastQC after it
+# Trim Galore + second FastQC after it
 
 As we faced with adapters-problem we create file.fasta with adapters from <http://docs.blast2go.com/user-manual/tools-(pro-feature)/fastq-quality-check/#FASTQQualityCheck-PerBaseSequenceQuality>.
 
@@ -152,27 +164,145 @@ done < $FILE
 
 * {$id}_2.fastq - reverse reads 
 
+## MultiQC_2
+
+```{bash, eval=F, echo=T}
+multiqc /path_to/after_trim_galore_1
+```
+
+Quality reports show problems with:
+
+* 
+
+* 
+
+# Rcorrector
+
+```{bash, eval=F, echo=T}
+mkdir /path_to/test_rcorrector_1
+```
+
+```{bash, eval=F, echo=T}
+mkdir /path_to/test_rcorrector_1
+```
+
+/home/tools/rcorrector -p SRR11096622_1_val_1.fq SRR11096622_2_val_2.fq -p SRR11096623_1_val_1.fq SRR11096623_2_val_2.fq -od test_rcorrector_1
+
+
+## MultiQC_3
+```{bash, eval=F, echo=T}
+
+multiqc /path_to/test_rcorrector_1
+```
+
+
+# Identify and remove over-represented sequences
+
+Based on all FastQC reports table () and .fasta file (over_r_rRNA.fasta) with all over-represented sequences was created. 
+
+Using over_r_rRNA.fasta with help of Blastn - (<https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome>) all unique sequences were identified.
+
+* Database --> Standard databases (nr/nt) --> Nucleotide collection (nr/nt)
+
+* Organism --> bryozoans (taxid:10205)
+
+After that, it was indicated in the table opposite each sequence what it encodes.
+
+## Bowtie2 - Remove over-represented sequences 
+
+The example we used to complete this part. - <https://sites.google.com/site/wiki4metagenomics/tools/short-read/remove-host-sequences>
+
+Bowtie2 database was created using fasta file with over-represented sequences.
+
+```{bash, eval=F, echo=T}
+bowtie2-build over_r_rRNA.fasta O_R_rRNA_DB
+```
+
+```{bash, eval=F, echo=T}
+#!/bin/bash
+
+FILE=$1
+while read ID
+do
+        bowtie2 -p 14 -x /path_to/O_R_rRNA_DB \
+        -1 /path_to/${ID}_1_val_1.cor.fq \
+        -2 /path_to/${ID}_2_val_2.cor.fq \
+        --un-conc /path_to/${ID}_rna_removed > ${ID}mapped_and_unmapped.sam
+
+done < $FILE
+
+```
+
+
+```{bash, eval=F, echo=T}
+/path_to/code_to_remove_o_r_rrna.sh id.txt
+```
 
 
 
+/mnt4/transciptome_compare/kvach/ncbi/public/sra/first_split_try/forward_and_revers_raw_reads/after_trim_galore_1/test_rcorrector_1/FOR_over_rep_remove
+
+36 удалить 
+скопировать ID_for_rrna_remove.txt
+в с 36 до 40 оставить в ID_for_rrna_remove.txt
+
+./code_to_remove_o_r_rrna.sh  ID_for_rrna_remove.txt - готово!
+
+1) проверить, как все прошло в /mnt4/transciptome_compare/kvach/ncbi/public/sra/first_split_try/forward_and_revers_raw_reads/after_trim_galore_1/test_rcorrector_1/FOR_over_rep_remove
+
+2) протестировать нижний блок
+
+```{bash, eval=F, echo=T}
+#!/bin/bash
+
+FILE=$1
+while read ID
+do
+        mv ${ID}_rna_removed.1 ${ID}_rna_removed_1_F.fastq.gz
+        mv ${ID}_rna_removed.2 ${ID}_rna_removed_2_F.fastq.gz
+
+done < $FILE
+
+```
+
+3) запустить этот блок
 
 
 
+# SALMON
 
+```{bash, eval=F, echo=T}
+gzip Trinity_2019filtered_Reference.fasta
+```
 
+```{bash, eval=F, echo=T}
 
+/home/tools/salmon-latest_linux_x86_64/bin salmon index -t Trinity_2019filtered_Reference.fasta.gz -i ref_index_1
 
+```
+
+```{bash, eval=F, echo=T}
+
+```
+
+```{bash, eval=F, echo=T}
+
+```
 
 
 
 
 # References
 
+Bowtie2 - <http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#output-options>
+
 FastQC - 
 
 MultiQC - <https://multiqc.info/>
 
-Sratoolkit - <http://ncbi.github.io/sra-tools/ >
+SALMON - 
+
+Sratoolkit - <http://ncbi.github.io/sra-tools/>
 
 TrimGalore-0.6.6 - 
 

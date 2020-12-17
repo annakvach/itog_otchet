@@ -22,9 +22,11 @@ Using this method, we created a simple bash program that receives a file.txt wit
 
 First of all we created a file.txt with all sra id on each line.
 
-```{bash, content of txt.file, eval=F, echo=T}
+```{bash, eval=F, echo=T}
 vi id.txt
+```
 
+```{bash, content of txt.file, eval=F, echo=T}
 SRR11096622
 SRR11096623
 SRR11096624
@@ -102,7 +104,7 @@ gunzip *fastq.gz
 mkdir /path_to/FastQC_1_for_raw_data 
 
 # create fastqc reports in FastQC_1_for_raw_data
-fastqc -o /path_to/FastQC_1_for_raw_data * 
+fastqc -t 10 -o /path_to/FastQC_1_for_raw_data * 
 ```
 
 ## MultiQC_1
@@ -122,9 +124,12 @@ Quality reports show problems with:
 
 As we faced with adapters-problem we create file.fasta with adapters from <http://docs.blast2go.com/user-manual/tools-(pro-feature)/fastq-quality-check/#FASTQQualityCheck-PerBaseSequenceQuality>.
 
+
 ```{bash, eval=F, echo=T}
 vi adapters.fasta
+```
 
+```{bash, eval=F, echo=T}
 >Illumina_Universal_Adapter 
 AGATCGGAAGAG
 >Illumina_Small_RNA_3_Adapter
@@ -252,22 +257,39 @@ done < $FILE
 
 2) протестировать нижний блок
 
+
+```{bash, eval=F, echo=T}
+mkdir after_rna_remove 
+cp id.txt ./after_rna_remove/id_1.txt
+mv *_rna_removed* after_rna_remove 
+```
+
+
+```{bash, eval=F, echo=T}
+vi for_rename.sh
+```
+
 ```{bash, eval=F, echo=T}
 #!/bin/bash
 
 FILE=$1
 while read ID
 do
-        mv ${ID}_rna_removed.1 ${ID}_rna_removed_1_F.fastq.gz
-        mv ${ID}_rna_removed.2 ${ID}_rna_removed_2_F.fastq.gz
+        mv ${ID}_rna_removed.1 ${ID}_rna_removed_1_F.fastq
+        mv ${ID}_rna_removed.2 ${ID}_rna_removed_2_R.fastq
 
 done < $FILE
 
 ```
 
-3) запустить этот блок
+```{bash, eval=F, echo=T}
+chmod +x for_rename.sh
+```
 
-
+```{bash, eval=F, echo=T}
+mkdir fastq_reports_after_rna_remove
+fastqc -o fastq_reports_after_rna_remove *fastq
+```
 
 # SALMON
 

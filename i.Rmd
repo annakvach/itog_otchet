@@ -11,9 +11,25 @@ output:
     highlight: tango  
 ---
 
+# Introduction
+
+
+
+
+
+
 # Obtain data
 
-There are two options how to obtain data: with help of Sratoolkit and simle bash code or manually from EBLM-EBI. 
+For or work needed forward and reverse reads and transcriptome assembly.
+
+transcriptome assembly - <https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/SDJZ4X> - Trinity_2019filtered_Reference.fasta - was used
+
+```{bash, eval=F, echo=T}
+mkdir transcriptome_assembly
+wget -P transcriptome_assembly https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/SDJZ4X/RXE6CF
+```
+
+There are two options how to obtain reads-data: with help of Sratoolkit and simple bash code or manually from EBLM-EBI. 
 
 ## Sratoolkit + simple bash 
 
@@ -146,7 +162,7 @@ GATCGTCGGACT
 FILE=$1                            
 while read id                      
 do                                     
-/path_to/TrimGalore-0.6.6/trim_galore --paired --phred33 -q 20 --length 36 -stringency 1 -e 0.1 -a2 "file:/path_to/adapters.fasta" -o after_trim_galore_1  --fastqc {$1}_1.fastq {$id}_2.fastq 
+/path_to/TrimGalore-0.6.6/trim_galore --paired --phred33 -q 20 --length 36 -stringency 1 -e 0.1 -a2 "file:/path_to/adapters.fasta" -o after_trim_galore_1  --fastqc ${id}_1.fastq ${id}_2.fastq 
 echo "for $id fastq-dump done --split-3"     
 done < $FILE
 ```
@@ -196,7 +212,6 @@ mkdir /path_to/test_rcorrector_1
 
 ## MultiQC_3
 ```{bash, eval=F, echo=T}
-
 multiqc /path_to/test_rcorrector_1
 ```
 
@@ -294,22 +309,201 @@ fastqc -o fastq_reports_after_rna_remove *fastq
 # SALMON
 
 ```{bash, eval=F, echo=T}
-gzip Trinity_2019filtered_Reference.fasta
+gzip /path_to/Trinity_2019filtered_Reference.fasta
 ```
 
 ```{bash, eval=F, echo=T}
 
-/home/tools/salmon-latest_linux_x86_64/bin salmon index -t Trinity_2019filtered_Reference.fasta.gz -i ref_index_1
+/path_to/salmon-latest_linux_x86_64/bin salmon index -t /path_to/Trinity_2019filtered_Reference.fasta.gz -i ref_index_1
 
+```
+
+```{bash, eval=F, echo=T}
+#!/bin/bash
+
+FILE=$1
+while read ID
+do
+echo "Processing sample ${ID}"
+
+# SRR11096631_rna_removed_2_R.fastq
+salmon quant -i ref_index_1 -l A \
+         -1 ${ID}_rna_removed_2_R.fastq \
+         -1 ${ID}_rna_removed_2_R.fastq \
+         -p 14 --validateMappings -o ${ID}_quant
+
+done < $FILE
 ```
 
 ```{bash, eval=F, echo=T}
 
 ```
 
+# EdgeR
+
+## Install packages
+
+We tried to install the required packages using the usual method, but nothing came of it.
+
+```{r}
+install.packages("tximport")
+install.packages("edgeR")
+```
+
+
+So we found solution there - <https://bioconductor.org/install/>. 
+
+"If" statement is checking if we already had BiocManager package installed, if not then install it. We needed this package to install other bioconductor packages (edgeR, mixOmics, RColorBrewer).
+
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+```
+
+
+For package installation we used function from - <https://stackoverflow.com/a/31620488>. It will check for missing packages and install them + it will query both - CRAN and Bioconductor repositories for missing package.
+
+```{r}
+install.packages.auto <- function(x) { 
+  x <- as.character(substitute(x)) 
+  if(isTRUE(x %in% .packages(all.available=TRUE))) { 
+    eval(parse(text = sprintf("require(\"%s\")", x)))
+  } else { 
+    #update.packages(ask= FALSE) #update installed packages.
+    eval(parse(text = sprintf("install.packages(\"%s\", dependencies = TRUE)", x)))
+  }
+  if(isTRUE(x %in% .packages(all.available=TRUE))) { 
+    eval(parse(text = sprintf("require(\"%s\")", x)))
+  } else {
+    source("http://bioconductor.org/biocLite.R")
+    #biocLite(character(), ask=FALSE) #update installed packages.
+    eval(parse(text = sprintf("biocLite(\"%s\")", x)))
+    eval(parse(text = sprintf("require(\"%s\")", x)))
+  }
+}
+```
+
+Packages installation:
+
+```{r}
+install.packages.auto(tximport)
+install.packages.auto(edgeR)
+install.packages.auto(mixOmics)
+install.packages.auto(RColorBrewer)
+install.packages.auto(ggplot2)
+```
+
+Library packages:
+
+```{r}
+library(tximport)
+library(edgeR)
+library(mixOmics)
+library(RColorBrewer)
+library(ggplot2)
+```
+
+## Prepairing data 
+
+### Get paths to salmon output for each sample
+
+```{r}
+my.files <-  list.files(list.dirs(path = "~/itog_otchet/salmon_quant_output", full.names = TRUE, recursive = FALSE), pattern = "quant.sf", full.names = TRUE)
+```
+
+As an example, we took 4 samples, with three biological repeats in each:
+
+* budauto - autozooid, bud
+
+  + budauto_29_quant.sf
+
+  + budauto_39_quant.sf
+
+  + budauto_40_quant.sf
+
+* budavic - avicularium, bud
+
+  + budavic_23_quant.sf
+
+  + budavic_24_quant.sf
+
+  + budavic_25_quant.sf
+
+* matauto - autozooid, mature
+
+  + matauto_26_quant.sf
+
+  + matauto_27_quant.sf
+
+  + matauto_28_quant.sf
+
+* matavic - avicularium, mature
+
+  + matavic_22_quant.sf
+
+  + matavic_37_quant.sf
+
+  + matavic_38_quant.sf
+
+```{r}
+my.files
+```
+
+Each XXXXXX_quant.sf file is a table with 5 colomns. 
+
+* Name - 
+
+* Length - 
+
+* EffectiveLength - 
+
+* TPM - 
+
+* NumReads - 
+
 ```{bash, eval=F, echo=T}
+cd /path_to/salmon_quant_output/BUD_AUTO_29
+head budauto_29_quant.sf 
+```
+
+
+Name	                    |  Length  | 	EffectiveLength	|    TPM	  |  NumReads
+--------------------------|----------|------------------|-----------|-------
+TRINITY_DN174516_c0_g1_i1 | 	 215   |    	68.774	    |  0.000000	|    0.000
+TRINITY_DN174582_c0_g1_i1	|    289	 |      132.312	    |  0.000000	|    0.000
+TRINITY_DN174551_c0_g1_i1	|    238	 |      87.409	    |  0.000000	|    0.000
+TRINITY_DN174560_c0_g1_i1	|    209	 |      64.123	    |  0.000000	|    0.000
+TRINITY_DN174581_c0_g1_i1	|    263	 |      108.553	    |  0.000000	|    0.000
+TRINITY_DN174540_c0_g1_i1	|    229	 |      80.031	    |  1.651575	|    1.000
+TRINITY_DN174596_c0_g1_i1	|    214	 |      67.978	    |  0.000000	|    0.000
+TRINITY_DN174531_c0_g1_i1	|    436	 |      275.061 	  |  0.000000	|    0.000
+TRINITY_DN174511_c0_g1_i1	|    239	 |      88.249	    |  0.000000	|    0.000
+
+
+### Create object - readeDGE 
+
+We create file of a readDGE class from our quant.sf-files. 5 columns were took + we add a group for each sample (one sample - one number).
+
+```{r}
+tab <- readDGE(files = my.files, columns = c(1, 5), group = c(1,1,1, 2,2,2, 3,3,3, 4,4,4))  
+```
+
+Checked our file 
+
+```{r, eval=F, echo=T}
+head(tab, 10)
+```
+## Filtering
+
+
+```{r}
+keep <- filterByExpr(tab) # отфильтровать транскрипты с низкой экспрессией (= на которые малое количество ридов упало)
+
+tab_filtered <- tab[keep, , keep.lib.sizes=FALSE]
 
 ```
+
 
 
 

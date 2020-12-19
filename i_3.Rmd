@@ -439,11 +439,20 @@ install.packages.auto(ggplot2)
 
 ```
 
+### Troubles with DESeq2 installation for R 3.6.3 
+
+We faced with troubles during installation for R 3.6.3 the DESeq2  package. 
+
+Resolution:
+
 ```{r}
 if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+    BiocManager::install(version = '3.10')
+```
 
+```{r}
 BiocManager::install("DESeq2")
+library(DESeq2)
 ```
 
 
@@ -456,7 +465,7 @@ library(edgeR)
 library(mixOmics)
 library(RColorBrewer)
 library(ggplot2)
-library(knitr)
+library(DESeq2)
 ```
 
 ## Prepairing data 

@@ -327,17 +327,61 @@ do
 echo "Processing sample ${ID}"
 
 # SRR11096631_rna_removed_2_R.fastq
-salmon quant -i ref_index_1 -l A \
-         -1 ${ID}_rna_removed_2_R.fastq \
-         -1 ${ID}_rna_removed_2_R.fastq \
+/path_to/salmon quant -i /path_to/ref_index_1 -l A \
+         -1 /path_to/${ID}_rna_removed_2_R.fastq \
+         -1 /path_to/${ID}_rna_removed_2_R.fastq \
          -p 14 --validateMappings -o ${ID}_quant
 
 done < $FILE
 ```
 
+output
+/mnt4/transciptome_compare/kvach/ncbi/TRANS
+
+ref_index
+/mnt4/transciptome_compare/kvach/ncbi/public/ref_trans
+
+fastq
+/mnt4/transciptome_compare/kvach/ncbi/public/sra/first_split_try/forward_and_revers_raw_reads/after_trim_galore_1/test_rcorrector_1/FOR_over_rep_remove/after_rna_remove
+
+
+/home/tools/salmon-latest_linux_x86_64/bin/salmon quant -i /mnt4/transciptome_compare/kvach/ncbi/public/ref_trans/ref_index_1 -l A \
+         -1 /mnt4/transciptome_compare/kvach/ncbi/public/sra/first_split_try/forward_and_revers_raw_reads/after_trim_galore_1/test_rcorrector_1/FOR_over_rep_remove/after_rna_remove/SRR11096631_rna_removed_1_F.fastq \
+         -2 /mnt4/transciptome_compare/kvach/ncbi/public/sra/first_split_try/forward_and_revers_raw_reads/after_trim_galore_1/test_rcorrector_1/FOR_over_rep_remove/after_rna_remove/SRR11096631_rna_removed_2_R.fastq \
+         -p 14 --validateMappings -o SRR11096631_quant
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```{bash, eval=F, echo=T}
 
 ```
+
+!!!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!!!
+
+!!!!!!!!!!
+
+!!!!!!!!!!!!
+
+
+!!!!!!!!!!
+"In quant.sf we obtained a table of counts, but for each transcript. The counts are fractional numbers. You also have normalized counts (per million reads), and information on the "real" transcript length and an "effective" length that can be used for normalization, which takes into account several biases." 
 
 # EdgeR
 
@@ -452,7 +496,7 @@ my.files
 
 Each XXXXXX_quant.sf file is a table with 5 colomns. 
 
-* Name - 
+* Name - ID of transcripts
 
 * Length - 
 
@@ -460,7 +504,7 @@ Each XXXXXX_quant.sf file is a table with 5 colomns.
 
 * TPM - 
 
-* NumReads - 
+* NumReads - Number of reads mapped on this transcript
 
 ```{bash, eval=F, echo=T}
 cd /path_to/salmon_quant_output/BUD_AUTO_29
@@ -483,27 +527,271 @@ TRINITY_DN174511_c0_g1_i1	|    239	 |      88.249	    |  0.000000	|    0.000
 
 ### Create object - readeDGE 
 
-We create file of a readDGE class from our quant.sf-files. 5 columns were took + we add a group for each sample (one sample - one number).
+We created file of a readDGE class from our quant.sf-files. 5 columns were took + we add a group for each sample (one sample - one number).
 
 ```{r}
 tab <- readDGE(files = my.files, columns = c(1, 5), group = c(1,1,1, 2,2,2, 3,3,3, 4,4,4))  
 ```
 
-Checked our file 
+Checked our file:
 
 ```{r, eval=F, echo=T}
 head(tab, 10)
 ```
 ## Filtering
 
+We have filtered out low expression transcripts. 
+
+filterByExpr() - this function determine which transcripts have sufficiently large counts to be retained in a statistical analysis.
+
+Chen Y, Lun ATL, and Smyth, GK (2016). From reads to genes to pathways: differential expression analysis of RNA-Seq experiments using Rsubread and the edgeR quasi-likelihood pipeline. F1000Research 5, 1438. http://f1000research.com/articles/5-1438
 
 ```{r}
-keep <- filterByExpr(tab) # отфильтровать транскрипты с низкой экспрессией (= на которые малое количество ридов упало)
-
-tab_filtered <- tab[keep, , keep.lib.sizes=FALSE]
-
+keep <- filterByExpr(tab)
+table(keep)
 ```
 
+```{r}
+tab_filtered <- tab[keep, , keep.lib.sizes = FALSE]
+```
+
+```{r, eval=F, echo=T}
+head(tab_filtered, 10)
+```
+## Effective library sizes
+
+calcNormFactors() - this function calculate normalization factors to scale the raw library sizes that minimizes the log-fold changes between the samples for most transcripts.
+
+```{r}
+tab_filt_norm <- calcNormFactors(tab_filtered) 
+head(tab_filt_norm$samples)
+```
+
+### PcoA (MDS plot)
+
+"The function plotMDS produces a plot in which distances between samples correspond to leading biological coefficient of variation (BCV) between those samples:"
+```{r}
+sample_names = c("Bud_auto_29", "Bud_auto_39", "Bud_auto_40", "Bud_avic_23", "Bud_avic_24", "Bud_avic_25", "Mat_auto_26", "Mat_auto_27", "Mat_auto_28", "Mat_avic_22", "Mat_avic_37", "Mat_avic_38")
+
+plotMDS(tab_filt_norm, col=rep(1:4, each=3), labels = sample_names)
+```
+
+## Estimating dispersions
+
+
+<https://bioinformatics.cvr.ac.uk/some-key-factors-for-number-of-significant-de-genes/#:~:text=The%20BCV%20(Biological%20Coefficient%20of,could%20detect%20more%20DE%20genes.>
+
+
+Biological coefficient of variation
+
+An important factor that influences the number of DE genes is the variation among the samples.The BCV (Biological Coefficient of Variation) plot is a way to measure the biological variation within a particular condition. A common dispersion (i.e. red line on the BCV plot) between 0.2 and 0.4 is usually considered reasonable and hence could detect more DE genes.If the common dispersion is above the 0.4 threshold, this will influence the number of DE genes found in the study. Additionally, the PCA (principal component analysis) and MDS (multidimensional scaling) plots which represents the relationship between groups of samples are affected by high BCVs. The experiment was run twice. We can see the differences in the BCV and MDS plots between the two experiments. An experiment where the common dispersion is 0.41 provides almost 576 DE genes whilst an experiment with high average BCV results in only 109 DE genes. Additionally, the MDS plots clearly differentiate the different conditions when the common dispersion is low implying greater variation between the conditions than within, as expected.
+
+
+### no design
+
+
+```{r}
+tab_de_3 <- estimateDisp(tab_filt_norm)
+tab_de_3
+```
+
+
+
+```{r}
+plotBCV(tab_de_3)
+# plotBCV(tab_de_3, col.tagwise = metadata$age)
+```
+
+### with design
+
+```{r}
+sample_names = c("Bud_auto_29", "Bud_auto_39", "Bud_auto_40", "Bud_avic_23", "Bud_avic_24", "Bud_avic_25", "Mat_auto_26", "Mat_auto_27", "Mat_auto_28", "Mat_avic_22", "Mat_avic_37", "Mat_avic_38")
+zooid_type <- c('AU','AU','AU', 'av', 'av', 'av','AU','AU','AU', 'av', 'av', 'av')
+age <- c('b', 'b', 'b', 'b', 'b', 'b', 'M', 'M', 'M', 'M', 'M', 'M')
+all_against_all <- c(1:12)
+each_sample <- c(1,1,1,2,2,2,3,3,3,4,4,4)
+
+metadata <- data.frame(sample_names, zooid_type, age, all_against_all, each_sample)
+metadata
+```
+
+#### ~zooid_type
+
+```{r}
+design_zt <- model.matrix(~zooid_type, data = metadata)
+rownames(design_zt) <- sample_names
+design_zt
+```
+
+```{r}
+tab_zt <- estimateDisp(tab_filt_norm, design_zt, robust=TRUE)
+tab_zt
+```
+
+```{r}
+plotBCV(tab_zt)
+```
+
+
+#### ~age
+
+```{r}
+design_age <- model.matrix(~age, data = metadata)
+rownames(design_age) <- sample_names
+design_age
+```
+
+```{r}
+tab_age <- estimateDisp(tab_filt_norm, design_age, robust=TRUE)
+tab_age
+```
+
+```{r}
+plotBCV(tab_age)
+```
+
+
+#### ~all_against_all
+
+```{r}
+design_all_against_all <- model.matrix(~all_against_all, data = metadata)
+rownames(design_all_against_all) <- sample_names
+design_all_against_all
+```
+
+```{r}
+tab_all_against_all <- estimateDisp(tab_filt_norm, design_all_against_all, robust=TRUE)
+tab_all_against_all
+```
+
+
+```{r}
+plotBCV(tab_all_against_all)
+```
+
+
+
+#### ~age + zooide type
+
+```{r}
+design_age_zooide_type<- model.matrix(~age + zooid_type, data = metadata)
+rownames(design_age_zooide_type) <- sample_names
+design_age_zooide_type
+```
+
+```{r}
+tab_age_zooide_type <- estimateDisp(tab_filt_norm, design_age_zooide_type, robust=TRUE)
+tab_age_zooide_type
+```
+
+
+```{r}
+plotBCV(tab_age_zooide_type)
+```
+
+
+
+#### ~each_sample
+
+```{r}
+design_each_sample<- model.matrix(~each_sample, data = metadata)
+rownames(design_each_sample) <- sample_names
+design_each_sample
+```
+
+```{r}
+tab_each_sample<- estimateDisp(tab_filt_norm, design_each_sample, robust=TRUE)
+tab_each_sample
+```
+
+
+```{r}
+plotBCV(tab_each_sample, col.tagwise = metadata$each_sample)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### compre
+
+```{r}
+tab_de_3$common.dispersion 
+tab_zt$common.dispersion 
+tab_age$common.dispersion 
+tab_all_against_all$common.dispersion
+tab_each_sample$common.dispersion
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### ?
+
+
+
+
+
+qlf.2vs1 <- glmQLFTest(fit, coef = 2:4)
+z <- topTags(qlf.2vs1, n = 30)
+head(z)
+
+z_table <- z$table
+
+logcpm <- cpm(tab3, log=TRUE)
+logcpm
 
 
 

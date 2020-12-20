@@ -3,15 +3,15 @@ title: "i_4"
 author: "anna kvach"
 date: "12/16/2020"
 output:
-  pdf_document:
-    toc: yes
-    toc_depth: '4'
   html_document:
     toc: yes
     number_sections: yes
     toc_depth: 4
     theme: united
     highlight: tango
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
 ---
 
 # Introduction
@@ -20,28 +20,55 @@ output:
 
 For or work needed forward and reverse reads and transcriptome assembly and annotation for it.
 
+We used Autozooid-Avicularium Transcriptome, Annotation  for it and reads (includes autozooid bud, mature autozooid, avicularium bud, and mature avicularium samples) of Bugulina stolonifera 
+
 ## Transcriptome assembly and annotation
 
 Transcriptome assembly - <https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/SDJZ4X> - Autozooid-Avicularium Transcriptome (includes autozooid bud, mature autozooid, avicularium bud, and mature avicularium samples) of Bugulina stolonifera 
 
-```{bash}
+```{bash, eval=F, echo=T}
+mkdir Transcriptome_assembly
+cd Transcriptome_assembly
+wget https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/SDJZ4X/U3DI0X
+
+mv ':persistentId?persistentId=doi:10.7910%2FDVN%2FSDJZ4X%2FU3DI0X' Tr_assem.fasta # rename to the file with .fasta formate
 
 ```
 
 Transcriptome annotation - <https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/GHE8T4> - Autozooid Bud, Mature Autozooid, Avicularium Bud, and Mature Avicularium Transcriptome Annotation Report
 
-```{bash}
+```{bash, eval=F, echo=T}
+mkdir Transcriptome_annotation
+cd Transcriptome_annotation
+wget https://dataverse.harvard.edu/api/access/datafile/4005816
 
+mv 4005816 tr_annot.xls # rename to the file with .xls formate
 ```
-
-
-
-## PE
 
 ```{bash, eval=F, echo=T}
 mkdir transcriptome_assembly
 wget -P transcriptome_assembly https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/SDJZ4X/RXE6CF
 ```
+
+
+## PE
+
+
+Zooid type          |    SRR ID        | 
+--------------------|------------------|
+avicularium, mature | 	 SRR11096622   |    
+avicularium, bud	  |    SRR11096623	 |  
+avicularium, bud  	|    SRR11096624	 |     
+avicularium, bud  	|    SRR11096625	 |    
+autozooid, mature	  |    SRR11096626	 |      
+autozooid, mature	  |    SRR11096627	 |      
+autozooid, mature	  |    SRR11096628	 |     
+autozooid, bud	    |    SRR11096629	 |   
+avicularium, mature |    SRR11096637	 |     
+avicularium, mature |    SRR11096638	 | 
+autozooid, bud	    |    SRR11096639	 |     
+autozooid, bud	    |    SRR11096640	 | 
+
 
 There are two options how to obtain reads-data: with help of Sratoolkit and simple bash code or manually from EBLM-EBI. 
 
@@ -50,7 +77,7 @@ There are two options how to obtain reads-data: with help of Sratoolkit and simp
 Using this method, we created a simple bash program that receives a file.txt with sra identifiers as input. Our code uses the prefetch and fastq-dump programs from the Sratoolkit package, and as a result downloads forward and backward reads.
 
 
-First of all we created a file.txt with all sra id on each line.
+First of all we created a file.txt with all sra id on each line. We used this file each time we needed to iteratete by .fastq files
 
 ```{bash, eval=F, echo=T}
 vi id.txt
@@ -59,19 +86,12 @@ vi id.txt
 ```{bash, content of txt.file, eval=F, echo=T}
 SRR11096622
 SRR11096623
-SRR11096624
+SRR11096624  
 SRR11096625
 SRR11096626
 SRR11096627
 SRR11096628
 SRR11096629
-SRR11096630
-SRR11096631
-SRR11096632
-SRR11096633
-SRR11096634
-SRR11096635
-SRR11096636
 SRR11096637
 SRR11096638
 SRR11096639
@@ -310,3 +330,72 @@ fastqc -o fastq_reports_after_rna_remove *fastq
 
 
 
+# SALMON
+
+```{bash, eval=F, echo=T}
+gzip Tr_assem.fasta
+```
+
+```{bash, eval=F, echo=T}
+
+cd /path_to/Transcriptome_assembly
+
+/path_to/salmon-latest_linux_x86_64/bin/salmon index -t Tr_assem.fasta.gz -i ref_index_Tr_assem
+
+```
+
+
+```{bash}
+vi for_salmon_quant.sh
+```
+
+```{bash, eval=F, echo=T}
+#!/bin/bash
+
+FILE=$1
+while read ID
+do
+echo "Processing sample ${ID}"
+
+# SRR11096631_rna_removed_2_R.fastq
+/path_to/salmon quant -i /path_to/ref_index_Tr_assem -l A \
+         -1 /path_to/${ID}_rna_removed_1_F.fastq \
+         -2 /path_to/${ID}_rna_removed_2_R.fastq \
+         -p 14 --validateMappings -o ${ID}_quant
+
+done < $FILE
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{bash, eval=F, echo=T}
+
+```
+
+!!!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!!!
+
+!!!!!!!!!!
+
+!!!!!!!!!!!!
+
+
+!!!!!!!!!!
+"In quant.sf we obtained a table of counts, but for each transcript. The counts are fractional numbers. You also have normalized counts (per million reads), and information on the "real" transcript length and an "effective" length that can be used for normalization, which takes into account several biases." 

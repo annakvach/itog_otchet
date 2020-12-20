@@ -1,5 +1,5 @@
 ---
-title: "i_4"
+title: "Autozooid-Avicularium Transcriptome"
 author: "anna kvach"
 date: "12/16/2020"
 output:
@@ -18,13 +18,18 @@ output:
 
 # Obtain data
 
+
 For or work needed forward and reverse reads and transcriptome assembly and annotation for it.
 
 We used Autozooid-Avicularium Transcriptome, Annotation  for it and reads (includes autozooid bud, mature autozooid, avicularium bud, and mature avicularium samples) of Bugulina stolonifera 
 
+
 ## Transcriptome assembly and annotation
 
+
+
 Transcriptome assembly - <https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/SDJZ4X> - Autozooid-Avicularium Transcriptome (includes autozooid bud, mature autozooid, avicularium bud, and mature avicularium samples) of Bugulina stolonifera 
+
 
 
 ```{bash, eval=F, echo=T}
@@ -37,7 +42,11 @@ Transcriptome assembly - <https://dataverse.harvard.edu/dataset.xhtml?persistent
 
 ```
 
+
+
 Transcriptome annotation - <https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/GHE8T4> - Autozooid Bud, Autozooid Mature, Avicularium Bud, Avicularium Mature  Transcriptome Annotation Report
+
+
 
 ```{bash, eval=F, echo=T}
 mkdir Transcriptome_annotation
@@ -47,13 +56,17 @@ wget https://dataverse.harvard.edu/api/access/datafile/4005816
 mv 4005816 tr_annot.xls # rename to the file with .xls formate
 ```
 
+
+
 ```{bash, eval=F, echo=T}
 mkdir transcriptome_assembly
 wget -P transcriptome_assembly https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/SDJZ4X/RXE6CF
 ```
 
 
+
 ## PE
+
 
 
 Zooid type          |    SRR ID        | 
@@ -72,18 +85,28 @@ autozooid, bud	    |    SRR11096639	 |
 autozooid, bud	    |    SRR11096640	 | 
 
 
+
 There are two options how to obtain reads-data: with help of Sratoolkit and simple bash code or manually from EBLM-EBI. 
 
+
+
 ### Sratoolkit + simple bash 
+
+
 
 Using this method, we created a simple bash program that receives a file.txt with sra identifiers as input. Our code uses the prefetch and fastq-dump programs from the Sratoolkit package, and as a result downloads forward and backward reads.
 
 
-First of all we created a file.txt with all sra id on each line. We used this file each time we needed to iteratete by .fastq files
+
+First of all we created a id.txt with all sra id on each line. We used this file each time we needed to iteratete by .fastq files
+
+
 
 ```{bash, eval=F, echo=T}
 vi id.txt
 ```
+
+
 
 ```{bash, content of txt.file, eval=F, echo=T}
 SRR11096622
@@ -100,7 +123,11 @@ SRR11096639
 SRR11096640
 ```
 
-After that sra_dowload_with_sratoolkit.sh was create.  
+
+
+And we used simple bash code to do the operation for each pair of reads: 
+
+
 
 ```{bash, sra_dowload_with_sratoolkit, eval=F, echo=T}
 #!/bin/bash  
@@ -115,33 +142,49 @@ echo "for $id fastq-dump done"
 done < $FILE
 ```
 
+
+
 And after that:
+
+
 
 ```{bash, eval=F, echo=T}
 /path_to/sra_dowload_with_sratoolkit.sh sra_id.txt
 ```
 
+
+
 In result you got for all samples SRRXXXXXXXX_1.fastq.gz (forward reads) and (revers reads) SRRXXXXXXXX_2.fastq.gz, and for some samples - SRRXXXXXXXX.fastq.gz - files without prefix. Files with no prefix are files of the remaining unpaired reads, and we did not use them.
+
+
 
 ```{bash, eval=F, echo=T}
 mkdir /path_to/forward_and_revers_raw_reads # create dir for forward and revers raw reads
 mkdir /path_to/bad_single_reads # create dir for unpaired reads
 
-mv *_*.*  /path_to/forward_and_revers_raw_reads # dir for forward and revers raw reads - data for future analisis
+mv *_*.*  /path_to/forward_and_revers_raw_reads # dir for forward and revers raw reads 
 mv *.f* /path_to/bad_single_reads # dir for remaining unpaired reads - did not use them
 ```
 
 
+
 ### Directly and manually from EBLM-EBI
+
+
 
 Also data could be obtained directly and manually from EBLM-EBI - <https://www.ebi.ac.uk/ena/browser/view/PRJNA607082>. 
 
 Files with forward reads have "_1" prefix (for ex. SRR11096622_1.fastq.gz) and files with reverse reads have "_2" prefix (for ex. SRR11096622_2.fastq.gz). Files with no prefix are files of the remaining unpaired reads, and we did not need them.
 
 
+
 # First data quality assessment FastQC and MultiQC
 
+
+
 ## FastQC_1
+
+
 
 ```{bash, eval=F, echo=T}
 
@@ -158,27 +201,55 @@ mkdir /path_to/FastQC_1_for_raw_data
 fastqc -t 10 -o /path_to/FastQC_1_for_raw_data * 
 ```
 
+
+
+
 ## MultiQC_1
+
+
 
 ```{bash, eval=F, echo=T}
 # to summarising the output from numerous fastqc reports in one .html file
 multiqc /path_to/FastQC_1_for_raw_data
 ```
 
+
+
+
 Quality reports show problems with:
 
-* 
+* The mean quality value across each base position in the read for 4 fastq files
 
-* 
+* The proportion of each base position for which each of the four normal DNA bases has been called for all
+
+* Per Sequence GC Content for all
+
+* Sequence Duplication Levels for all
+
+* Overrepresented sequences for 23 fastq files is failed
+
+* Adapter Content for all
+
+
+
+You can find my quality report in repository - multiqc_report_RAW_READS.html
+
+
 
 # Trim Galore + second FastQC after it
 
+
+
 As we faced with adapters-problem we create file.fasta with adapters from <http://docs.blast2go.com/user-manual/tools-(pro-feature)/fastq-quality-check/#FASTQQualityCheck-PerBaseSequenceQuality>.
+
+
 
 
 ```{bash, eval=F, echo=T}
 vi adapters.fasta
 ```
+
+
 
 ```{bash, eval=F, echo=T}
 >Illumina_Universal_Adapter 
@@ -190,17 +261,10 @@ GATCGTCGGACT
 ```
 
 
-```{bash, eval=F, echo=T}
-#####
-#!/bin/bash  
-# for trimming with TrimGalore for forward and reverse reads                                           
-FILE=$1                            
-while read id                      
-do                                     
-/path_to/TrimGalore-0.6.6/trim_galore --paired --phred33 -q 20 --length 36 -stringency 1 -e 0.1 -a2 "file:/path_to/adapters.fasta" -o after_trim_galore_1  --fastqc ${id}_1.fastq ${id}_2.fastq 
-echo "for $id fastq-dump done --split-3"     
-done < $FILE
-```
+
+And we used default options (as it was pointed in the papper) for Trim Galore:
+
+
 
 * -q 20 - remove low-quality reads with a Phred score cutoff of 20
 
@@ -220,29 +284,71 @@ done < $FILE
 
 * {$id}_2.fastq - reverse reads 
 
+
+
+```{bash, eval=F, echo=T}
+#####
+#!/bin/bash  
+# for trimming with TrimGalore for forward and reverse reads                                           
+FILE=$1                            
+while read id                      
+do                                     
+/path_to/TrimGalore-0.6.6/trim_galore --paired --phred33 -q 20 --length 36 -stringency 1 -e 0.1 -a2 "file:/path_to/adapters.fasta" -o after_trim_galore_1  --fastqc ${id}_1.fastq ${id}_2.fastq 
+echo "for $id fastq-dump done --split-3"     
+done < $FILE
+```
+
+
+
 ## MultiQC_2
+
+
 
 ```{bash, eval=F, echo=T}
 multiqc /path_to/after_trim_galore_1
 ```
 
-Quality reports show problems with:
 
-* 
 
-* 
+Quality reports steel show problems with:
+
+* The proportion of each base position for which each of the four normal DNA bases has been called for all
+
+* Per Sequence GC Content became a little bit better
+
+* Sequence Duplication Levels for all
+
+* Overrepresented sequences became a little bit better
+
+You can find my quality report in repository - multiqc_report_TRIM_GALORE.html
+
+
 
 # Rcorrector
 
-```{bash, eval=F, echo=T}
-mkdir /path_to/test_rcorrector_1
-```
+
 
 ```{bash, eval=F, echo=T}
 mkdir /path_to/test_rcorrector_1
 ```
 
-/home/tools/rcorrector -p SRR11096622_1_val_1.fq SRR11096622_2_val_2.fq -p SRR11096623_1_val_1.fq SRR11096623_2_val_2.fq -od test_rcorrector_1
+
+
+```{bash, eval=F, echo=T}
+/path_to/rcorrector -p SRR11096623_1_val_1.fq SRR11096623_2_val_2.fq \
+-p SRR11096624_1_val_1.fq SRR11096624_2_val_2.fq \
+-p SRR11096625_1_val_1.fq SRR11096625_2_val_2.fq \
+-p SRR11096637_1_val_1.fq SRR11096637_2_val_2.fq \
+-p SRR11096638_1_val_1.fq SRR11096638_2_val_2.fq \
+-p SRR11096622_1_val_1.fq SRR11096622_2_val_2.fq \
+-p SRR11096629_1_val_1.fq SRR11096629_2_val_2.fq \
+-p SRR11096639_1_val_1.fq SRR11096639_2_val_2.fq \
+-p SRR11096640_1_val_1.fq SRR11096640_2_val_2.fq \
+-p SRR11096626_1_val_1.fq SRR11096626_2_val_2.fq \
+-p SRR11096627_1_val_1.fq SRR11096627_2_val_2.fq \
+-p SRR11096628_1_val_1.fq SRR11096628_2_val_2.fq -od test_rcorrector_1
+```
+
 
 
 ## MultiQC_3
@@ -251,9 +357,21 @@ multiqc /path_to/test_rcorrector_1
 ```
 
 
+Quality report does not change.
+
+You can find my quality report in repository - multiqc_report_RCORRECTOR.html
+
+
+
 # Identify and remove over-represented sequences
 
+
+
 Based on all FastQC reports table () and .fasta file (over_r_rRNA.fasta) with all over-represented sequences was created. 
+
+You can find table_FastQC_reports.csv and .fasta file (over_r_rRNA.fasta).
+
+
 
 Using over_r_rRNA.fasta with help of Blastn - (<https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome>) all unique sequences were identified.
 
@@ -261,17 +379,37 @@ Using over_r_rRNA.fasta with help of Blastn - (<https://blast.ncbi.nlm.nih.gov/B
 
 * Organism --> bryozoans (taxid:10205)
 
-After that, it was indicated in the table opposite each sequence what it encodes.
+
+
+After that, it was indicated in the table opposite each sequence what it encodes. 
+
+The sequences of ribosomal RNA and cytochrome oxidases were transferred to the fast file (over_r_rRNA.fasta). 
+
+This is necessary for the next cleaning step.
+
+
 
 ## Bowtie2 - Remove over-represented sequences 
+
+
+
+We used Bowtie2 to filtered the read, which mapped on over_r_rRNA.fasta (file with rRNA and COI sequences). 
 
 The example we used to complete this part. - <https://sites.google.com/site/wiki4metagenomics/tools/short-read/remove-host-sequences>
 
 Bowtie2 database was created using fasta file with over-represented sequences.
 
+
+
 ```{bash, eval=F, echo=T}
 bowtie2-build over_r_rRNA.fasta O_R_rRNA_DB
 ```
+
+
+
+And we used simple bash code to do the operation for each pair of reads:
+
+
 
 ```{bash, eval=F, echo=T}
 #!/bin/bash
@@ -289,11 +427,24 @@ done < $FILE
 ```
 
 
+
+```{bash, eval=F, echo=T}
+chmod +x code_to_remove_o_r_rrna.sh
+```
+
+
+
+Run code:
+
+
+
 ```{bash, eval=F, echo=T}
 /path_to/code_to_remove_o_r_rrna.sh id.txt
 ```
 
 
+
+The otput file loks like {ID}_rna_removed.1 and {ID}_rna_removed.2, so we needed to rename them. Did it in new dir - after_rna_remove.
 
 
 
@@ -304,9 +455,16 @@ mv *_rna_removed* after_rna_remove
 ```
 
 
+
 ```{bash, eval=F, echo=T}
 vi for_rename.sh
 ```
+
+
+
+And we again used simple bash code to do the operation for each pair of reads:
+
+
 
 ```{bash, eval=F, echo=T}
 #!/bin/bash
@@ -321,24 +479,59 @@ done < $FILE
 
 ```
 
+
+
+
 ```{bash, eval=F, echo=T}
 chmod +x for_rename.sh
 ```
+
+
+
+Create fastqc report to that over-represented sequences a little loss. 
+
+
 
 ```{bash, eval=F, echo=T}
 mkdir fastq_reports_after_rna_remove
 fastqc -o fastq_reports_after_rna_remove *fastq
 ```
 
-#===============================================
+
+
+## MultiQC
+
+
+
+```{bash, eval=F, echo=T}
+multiqc fastq_reports_after_rna_remove
+```
+
+
+
+-----------------------------------------
+For now, we stopped at this step, because we just wanted to try different ways to clean up the data. 
+
+Since we did not plan to collect the transcript, but align it with a ready-made transcript assembled 
+
+from completely purified reads, this should not have hindered us in further analysis.
+----------------------------------------
+
+
 
 # SALMON
 
+
+
 ## Indexind ref. transcriprome
+
+
 
 ```{bash, eval=F, echo=T}
 gzip Tr_assem.fasta
 ```
+
+
 
 ```{bash, eval=F, echo=T}
 
@@ -348,11 +541,18 @@ cd /path_to/Transcriptome_assembly
 
 ```
 
+
+
 ```{bash, eval=F, echo=T}
 vi for_salmon_quant.sh
 ```
 
+
+
+
 ## Counting counts
+
+
 
 ```{bash, eval=F, echo=T}
 #!/bin/bash
@@ -740,9 +940,11 @@ head(selectedFilt)
 
 
 # MA plot with differentially expressed genes (-----)
+
+plotSmear(dgeFilt, de.tags = rownames(selectedFilt))
 ```{r}
 dgeFilt$samples$group <- design_age_zooide_type
-plotSmear(dgeFilt, de.tags = rownames(selectedFilt))
+
 ```
 ```{r}
 

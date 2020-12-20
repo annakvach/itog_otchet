@@ -2,13 +2,16 @@
 title: "otchet_part_1"
 author: "anna kvach"
 date: "12/16/2020"
-output: 
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
   html_document:
-    toc: true
-    number_sections: true 
-    toc_depth: 4  
-    theme: united  
-    highlight: tango  
+    toc: yes
+    number_sections: yes
+    toc_depth: 4
+    theme: united
+    highlight: tango
 ---
 
 # Introduction
@@ -260,17 +263,6 @@ done < $FILE
 
 
 
-/mnt4/transciptome_compare/kvach/ncbi/public/sra/first_split_try/forward_and_revers_raw_reads/after_trim_galore_1/test_rcorrector_1/FOR_over_rep_remove
-
-36 удалить 
-скопировать ID_for_rrna_remove.txt
-в с 36 до 40 оставить в ID_for_rrna_remove.txt
-
-./code_to_remove_o_r_rrna.sh  ID_for_rrna_remove.txt - готово!
-
-1) проверить, как все прошло в /mnt4/transciptome_compare/kvach/ncbi/public/sra/first_split_try/forward_and_revers_raw_reads/after_trim_galore_1/test_rcorrector_1/FOR_over_rep_remove
-
-2) протестировать нижний блок
 
 
 ```{bash, eval=F, echo=T}
@@ -538,6 +530,12 @@ Checked our file:
 ```{r, eval=F, echo=T}
 head(tab, 10)
 ```
+## somethings
+```{r}
+AveLogCPM <- aveLogCPM(tab)
+hist(AveLogCPM)
+```
+
 ## Filtering
 
 We have filtered out low expression transcripts. 
@@ -558,6 +556,14 @@ tab_filtered <- tab[keep, , keep.lib.sizes = FALSE]
 ```{r, eval=F, echo=T}
 head(tab_filtered, 10)
 ```
+### something
+
+```{r}
+AveLogCPM <- aveLogCPM(tab_filtered)
+hist(AveLogCPM)
+```
+
+
 ## Effective library sizes
 
 calcNormFactors() - this function calculate normalization factors to scale the raw library sizes that minimizes the log-fold changes between the samples for most transcripts.
@@ -566,6 +572,13 @@ calcNormFactors() - this function calculate normalization factors to scale the r
 tab_filt_norm <- calcNormFactors(tab_filtered) 
 head(tab_filt_norm$samples)
 ```
+### somethging
+
+```{r}
+
+```
+
+
 
 ### PcoA (MDS plot)
 
@@ -593,6 +606,9 @@ An important factor that influences the number of DE genes is the variation amon
 ```{r}
 tab_de_3 <- estimateDisp(tab_filt_norm)
 tab_de_3
+```
+```{r}
+tab_de_3$common.dispersion
 ```
 
 
@@ -701,17 +717,25 @@ design_each_sample
 
 ```{r}
 tab_each_sample<- estimateDisp(tab_filt_norm, design_each_sample, robust=TRUE)
-tab_each_sample
 ```
 
+```{r}
+tab_each_sample$common.dispersion
+```
 
 ```{r}
 plotBCV(tab_each_sample, col.tagwise = metadata$each_sample)
 ```
+##### estimateGLMCommonDisp
+
+```{r}
+y <- estimateGLMCommonDisp(tab_filt_norm, design_each_sample)
+```
 
 
-
-
+```{r}
+y$common.dispersion
+```
 
 
 

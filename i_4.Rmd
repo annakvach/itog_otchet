@@ -344,8 +344,7 @@ cd /path_to/Transcriptome_assembly
 
 ```
 
-
-```{bash}
+```{bash, eval=F, echo=T}
 vi for_salmon_quant.sh
 ```
 
@@ -366,36 +365,113 @@ echo "Processing sample ${ID}"
 done < $FILE
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ```{bash, eval=F, echo=T}
+chmod +x for_salmon_quant.sh
 
+for_salmon_quant.sh /path_to/id.txt
 ```
 
-!!!!!!!!!!!!!!!
 
-!!!!!!!!!!!!!
+# EdgeR
 
-!!!!!!!!!!!!!!!
+## Install packages
 
-!!!!!!!!!!
+We tried to install the required packages using the usual method, but nothing came of it.
 
-!!!!!!!!!!!!
+```{r}
+install.packages("tximport")
+install.packages("edgeR")
+```
 
 
-!!!!!!!!!!
+So we found solution there - <https://bioconductor.org/install/>. 
+
+"If" statement is checking if we already had BiocManager package installed, if not then install it. We needed this package to install other bioconductor packages (edgeR, mixOmics, RColorBrewer).
+
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+```
+
+
+For package installation we used function from - <https://stackoverflow.com/a/31620488>. It will check for missing packages and install them + it will query both - CRAN and Bioconductor repositories for missing package.
+
+```{r}
+install.packages.auto <- function(x) { 
+  x <- as.character(substitute(x)) 
+  if(isTRUE(x %in% .packages(all.available=TRUE))) { 
+    eval(parse(text = sprintf("require(\"%s\")", x)))
+  } else { 
+    #update.packages(ask= FALSE) #update installed packages.
+    eval(parse(text = sprintf("install.packages(\"%s\", dependencies = TRUE)", x)))
+  }
+  if(isTRUE(x %in% .packages(all.available=TRUE))) { 
+    eval(parse(text = sprintf("require(\"%s\")", x)))
+  } else {
+    source("http://bioconductor.org/biocLite.R")
+    #biocLite(character(), ask=FALSE) #update installed packages.
+    eval(parse(text = sprintf("biocLite(\"%s\")", x)))
+    eval(parse(text = sprintf("require(\"%s\")", x)))
+  }
+}
+```
+
+Packages installation:
+
+```{r}
+install.packages.auto(tximport)
+install.packages.auto(edgeR)
+install.packages.auto(mixOmics)
+install.packages.auto(RColorBrewer)
+install.packages.auto(ggplot2)
+install.packages("readxl")
+```
+
+Library packages:
+
+```{r}
+library(tximport)
+library(edgeR)
+library(mixOmics)
+library(RColorBrewer)
+library(ggplot2)
+library("readxl")
+```
+
+## Prepairing data 
+
 "In quant.sf we obtained a table of counts, but for each transcript. The counts are fractional numbers. You also have normalized counts (per million reads), and information on the "real" transcript length and an "effective" length that can be used for normalization, which takes into account several biases." 
+
+
+### tximport
+
+```{r}
+for_tx2gene <- read.delim("/home/anna/temp/tr_annot.xls")
+for_tx2gene
+```
+
+```{r}
+head(for_tx2gene[,c(2,1)])
+```
+
+
+```{r}
+tx2gene <- for_tx2gene[,c(2,1)]
+```
+
+
+```{r}
+samples_names <- c("SRR11096622_quant", "SRR11096623_quant", "SRR11096624_quant", "SRR11096625_quant", "SRR11096626_quant", "SRR11096627_quant", "SRR11096628_quant", "SRR11096629_quant", "SRR11096637_quant", "SRR11096638_quant", "SRR11096639_quant", "SRR11096640_quant")
+
+files <- file.path("/home/anna/temp/for_quant_sf", samples_names, "quant.sf")
+names(files) <- paste0("s_", 1:12, c("_avi_mat", "_avi_bud", "_avi_bud", "_avi_bud", "_auto_mat", "_auto_mat", "_auto_mat", "_auto_bud", "_avi_mat", "_avi_mat", "_auto_bud", "_auto_bud"))
+
+files
+```
+
+
+```{r}
+txi.salmon <- tximport(files, type = "salmon", tx2gene = tx2gene)
+head(txi.salmon$counts)
+```

@@ -3,15 +3,15 @@ title: "i_4"
 author: "anna kvach"
 date: "12/16/2020"
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
   html_document:
     toc: yes
     number_sections: yes
     toc_depth: 4
     theme: united
     highlight: tango
-  pdf_document:
-    toc: yes
-    toc_depth: '4'
 ---
 
 # Introduction
@@ -26,16 +26,18 @@ We used Autozooid-Avicularium Transcriptome, Annotation  for it and reads (inclu
 
 Transcriptome assembly - <https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/SDJZ4X> - Autozooid-Avicularium Transcriptome (includes autozooid bud, mature autozooid, avicularium bud, and mature avicularium samples) of Bugulina stolonifera 
 
-```{bash, eval=F, echo=T}
-mkdir Transcriptome_assembly
-cd Transcriptome_assembly
-wget https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/SDJZ4X/U3DI0X
 
-mv ':persistentId?persistentId=doi:10.7910%2FDVN%2FSDJZ4X%2FU3DI0X' Tr_assem.fasta # rename to the file with .fasta formate
+```{bash, eval=F, echo=T}
+
+# mkdir Transcriptome_assembly
+# cd Transcriptome_assembly
+# wget https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/SDJZ4X/U3DI0X
+
+# mv ':persistentId?persistentId=doi:10.7910%2FDVN%2FSDJZ4X%2FU3DI0X' Tr_assem.fasta # rename to the file with .fasta formate
 
 ```
 
-Transcriptome annotation - <https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/GHE8T4> - Autozooid Bud, Mature Autozooid, Avicularium Bud, and Mature Avicularium Transcriptome Annotation Report
+Transcriptome annotation - <https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/GHE8T4> - Autozooid Bud, Autozooid Mature, Avicularium Bud, Avicularium Mature  Transcriptome Annotation Report
 
 ```{bash, eval=F, echo=T}
 mkdir Transcriptome_annotation
@@ -328,9 +330,11 @@ mkdir fastq_reports_after_rna_remove
 fastqc -o fastq_reports_after_rna_remove *fastq
 ```
 
-
+#===============================================
 
 # SALMON
+
+## Indexind ref. transcriprome
 
 ```{bash, eval=F, echo=T}
 gzip Tr_assem.fasta
@@ -347,6 +351,8 @@ cd /path_to/Transcriptome_assembly
 ```{bash, eval=F, echo=T}
 vi for_salmon_quant.sh
 ```
+
+## Counting counts
 
 ```{bash, eval=F, echo=T}
 #!/bin/bash
@@ -371,6 +377,7 @@ chmod +x for_salmon_quant.sh
 for_salmon_quant.sh /path_to/id.txt
 ```
 
+# ==================
 
 # EdgeR
 
@@ -425,7 +432,14 @@ install.packages.auto(edgeR)
 install.packages.auto(mixOmics)
 install.packages.auto(RColorBrewer)
 install.packages.auto(ggplot2)
-install.packages("readxl")
+
+
+BiocManager::install("HTSFilter")
+
+# install.packages("readxl")
+# install.packages("stringr")
+# install.packages("readr")
+# BiocManager::install("biomaRt")
 ```
 
 Library packages:
@@ -437,7 +451,22 @@ library(mixOmics)
 library(RColorBrewer)
 library(ggplot2)
 library("readxl")
+
+library(HTSFilter)
+
+# for trouble with tximport transcript missing
+library(dplyr)
+library(stringr)
+library("readr")
+library("biomaRt")
 ```
+
+```{r}
+# BiocManager::install("HTSFilter")
+library(HTSFilter)
+```
+
+==========================================================
 
 ## Prepairing data 
 
@@ -446,26 +475,40 @@ library("readxl")
 
 ### tximport
 
+
+#### Import annotation: 
+
 ```{r}
 for_tx2gene <- read.delim("/home/anna/temp/tr_annot.xls")
-for_tx2gene
+colnames(for_tx2gene)
 ```
+
+
+
+in  our assemly fasta file:
+
+```{bash, eval=F, echo=T}
+>TRINITY_DN174516_c0_g1_i1 len=210 path=[188:0-209] [-1, 188, -2]
+CCATTGTCGGTACCATCCTTCTCCTCGTCATCTGCGGTGCCTGCTTCCTCATCATGAAGA
+AGACCTCCGACAAGAACGTCGAGCAGATCGTTGCCGGCCGGACCGCCCAGTTTGACTACT
+CTTCGACCTCGTCCTCTTCCGAGTTTGCTGGTGCCAACCAGTTTGCTGACCTCGACTACT
+ACTCGTACTCGTACTAAGGCGTGTGAAAAC
+```
+
+So we need to put transcript_id data (with "TRINITY_DN174516_c0_g1_i1") in the first column in tx2gene file
 
 ```{r}
 head(for_tx2gene[,c(2,1)])
-```
-
-
-```{r}
 tx2gene <- for_tx2gene[,c(2,1)]
 ```
 
+#### Impotr Salmon quant output (quant.sf)
 
 ```{r}
-samples_names <- c("SRR11096622_quant", "SRR11096623_quant", "SRR11096624_quant", "SRR11096625_quant", "SRR11096626_quant", "SRR11096627_quant", "SRR11096628_quant", "SRR11096629_quant", "SRR11096637_quant", "SRR11096638_quant", "SRR11096639_quant", "SRR11096640_quant")
+samples_names <- c( "SRR11096629_quant", "SRR11096639_quant", "SRR11096640_quant", "SRR11096623_quant", "SRR11096624_quant", "SRR11096625_quant",  "SRR11096626_quant", "SRR11096627_quant", "SRR11096628_quant",  "SRR11096637_quant", "SRR11096638_quant", "SRR11096622_quant")
 
 files <- file.path("/home/anna/temp/for_quant_sf", samples_names, "quant.sf")
-names(files) <- paste0("s_", 1:12, c("_avi_mat", "_avi_bud", "_avi_bud", "_avi_bud", "_auto_mat", "_auto_mat", "_auto_mat", "_auto_bud", "_avi_mat", "_avi_mat", "_auto_bud", "_auto_bud"))
+names(files) <- paste0("s_", 1:12, c("_auto_bud", "_auto_bud", "_auto_bud", "_avi_bud", "_avi_bud", "_avi_bud", "_auto_mat", "_auto_mat", "_auto_mat",  "_avi_mat", "_avi_mat", "_avi_mat"))
 
 files
 ```
@@ -473,5 +516,281 @@ files
 
 ```{r}
 txi.salmon <- tximport(files, type = "salmon", tx2gene = tx2gene)
-head(txi.salmon$counts)
+
 ```
+
+```{r}
+cts <- txi.salmon$counts
+normMat <- txi.salmon$length
+normMat <- normMat/exp(rowMeans(log(normMat)))
+o <- log(calcNormFactors(cts/normMat)) + log(colSums(cts/normMat))
+group = c(1,1,1,2,2,2,3,3,3,4,4,4) # add groups 
+
+y <- DGEList(cts, group = group)
+y$offset <- t(t(log(normMat)) + o)
+```
+
+
+# Filtering
+
+```{r}
+keep <- filterByExpr(y)
+y <- y[keep, , keep.lib.sizes=FALSE]
+```
+
+```{r}
+y
+```
+
+```{r}
+nrow(y$counts)
+```
+
+# Normalisation - Effective library sizes
+
+```{r}
+y <- calcNormFactors(y)
+y$samples
+```
+
+```{r}
+nrow(y$counts)
+```
+
+## PcoA (MDS plot)
+
+```{r}
+samples_names_hum <- paste0(c(29,39,40, 23,24,25, 26,27,28, 37,38,22), c("_auto_bud", "_auto_bud", "_auto_bud", "_avi_bud", "_avi_bud", "_avi_bud", "_auto_mat", "_auto_mat", "_auto_mat",  "_avi_mat", "_avi_mat", "_avi_mat"))
+plotMDS(y, col= c(1,1,1,2,2,2,3,3,3,4,4,4), labels = samples_names_hum)
+```
+
+
+========================================
+## no design
+
+```{r}
+y <- estimateDisp(y)
+y
+```
+### estimate disp
+```{r}
+y$common.dispersion
+```
+### plotBCV
+```{r}
+plotBCV(y)
+```
+
+
+### Boxplot for pseudo-counts
+
+```{r}
+pseudoCounts <- log2(y$counts + 1)
+head(pseudoCounts)
+```
+
+
+
+```{r}
+par(mar = c(8,4,1,2))
+boxplot(pseudoCounts, col = "gray", las = 3, cex.names = 1)
+```
+
+### MA-plots between first two WT samples (using limma package)
+```{r}
+limma::plotMA(pseudoCounts[ ,1:2], xlab = "M", ylab = "A", main = "")
+abline(h = 0, col = "red")
+```
+
+### Heatmap
+
+```{r}
+sampleDists <- as.matrix(dist(t(pseudoCounts)))
+sampleDists
+```
+
+
+```{r}
+cimColor <- colorRampPalette(rev(brewer.pal(9, "Blues")))(8)
+cim(sampleDists, color = cimColor, symkey = FALSE, row.cex = 0.7, col.cex = 0.7) # vvedi eto v consol
+```
+
+```{r}
+dgeFilt <- HTSFilter(y)$filteredData
+```
+
+
+#### topTags
+
+```{r}
+fit <- glmFit(dgeFilt)
+dgeLRTfilt <- glmLRT(fit, coef = 2)
+resLRTfilt <- topTags(dgeLRTfilt, n = nrow(dgeFilt$counts))
+selectedFilt <- resLRTfilt$table$FDR < 0.05 & abs(resLRTfilt$table$logFC) > 1
+selectedFilt <- resLRTfilt$table[selectedFilt, ]
+nrow(selectedFilt)
+```
+
+```{r}
+head(selectedFilt)
+```
+
+
+# ================================
+## with design
+
+### estimatind disp
+
+
+Create a table with experiment design:
+
+```{r}
+samples_names_hum <- paste0(c(29,39,40, 23,24,25, 26,27,28, 37,38,22), c("_auto_bud", "_auto_bud", "_auto_bud", "_avi_bud", "_avi_bud", "_avi_bud", "_auto_mat", "_auto_mat", "_auto_mat",  "_avi_mat", "_avi_mat", "_avi_mat"))
+
+zooid_type <- c('AU','AU','AU', 'av', 'av', 'av','AU','AU','AU', 'av', 'av', 'av')
+
+age <- c('b', 'b', 'b', 'b', 'b', 'b', 'M', 'M', 'M', 'M', 'M', 'M')
+
+all_against_all <- c(1:12)
+
+each_sample <- c(1,1,1,2,2,2,3,3,3,4,4,4)
+
+metadata <- data.frame(samples_names_hum, zooid_type, age, all_against_all, each_sample)
+metadata
+```
+
+
+#### ~age + zooide type
+
+```{r}
+design_age_zooide_type<- model.matrix(~age + zooid_type, data = metadata)
+rownames(design_age_zooide_type) <- samples_names_hum
+design_age_zooide_type
+```
+
+```{r}
+tab_age_zooide_type <- estimateDisp(y, design_age_zooide_type, robust=TRUE)
+tab_age_zooide_type$common.dispersion
+```
+
+
+```{r}
+plotBCV(tab_age_zooide_type)
+```
+
+### PLOTS With DESIGN
+
+```{r}
+pseudoCounts <- log2(y$counts + 1)
+head(pseudoCounts)
+```
+
+
+#### Boxplot for pseudo-counts
+```{r}
+par(mar = c(8,4,1,2))
+boxplot(pseudoCounts, col = "gray", las = 3, cex.names = 1)
+```
+
+#### MA-plots between first two WT samples (using limma package)
+```{r}
+limma::plotMA(pseudoCounts[ ,1:2], xlab = "M", ylab = "A", main = "")
+abline(h = 0, col = "red")
+```
+
+#### Heatmap
+
+```{r}
+sampleDists <- as.matrix(dist(t(pseudoCounts)))
+sampleDists
+```
+
+
+```{r}
+cimColor <- colorRampPalette(rev(brewer.pal(9, "Blues")))(8)
+cim(sampleDists, color = cimColor, symkey = FALSE, row.cex = 0.7, col.cex = 0.7) # vvedi eto v consol
+```
+
+
+
+
+```{r}
+dgeFilt <- HTSFilter(y)$filteredData
+```
+
+
+```{r}
+dgeFilt
+```
+
+###### topTags
+
+```{r}
+fit <- glmFit(dgeFilt)
+dgeLRTfilt <- glmLRT(fit, coef = 2)
+resLRTfilt <- topTags(dgeLRTfilt, n = nrow(dgeFilt$counts))
+selectedFilt <- resLRTfilt$table$FDR < 0.05 & abs(resLRTfilt$table$logFC) > 1
+selectedFilt <- resLRTfilt$table[selectedFilt, ]
+nrow(selectedFilt)
+```
+
+```{r}
+head(selectedFilt)
+```
+
+
+# MA plot with differentially expressed genes (-----)
+```{r}
+dgeFilt$samples$group <- design_age_zooide_type
+plotSmear(dgeFilt, de.tags = rownames(selectedFilt))
+```
+```{r}
+
+```
+
+
+```{r}
+selY <- cpm(dgeFilt, log = TRUE, prior.count = 1)
+selY <- selY[match(rownames(selectedFilt), rownames(dgeFilt$counts)), ]
+finalHM <- cim(t(selY), color = cimColor, symkey = FALSE, row.cex = 0.7,
+               col.cex = 0.7)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+sessionInfo()
+```
+
